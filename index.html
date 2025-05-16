@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Shooter Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+            background-color: #111;
+            color: #fff;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .falling-word {
+            position: absolute;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            animation-name: fall;
+            animation-timing-function: linear;
+            user-select: none;
+            cursor: move;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+        
+        @keyframes fall {
+            0% {
+                transform: translateY(-50px);
+            }
+            100% {
+                transform: translateY(100vh);
+            }
+        }
+        
+        .laser {
+            position: absolute;
+            width: 3px;
+            background: linear-gradient(to top, #f0f, #fff);
+            transform-origin: bottom center;
+            z-index: 5;
+            animation: laser-flash 0.3s linear;
+        }
+        
+        @keyframes laser-flash {
+            0% { opacity: 0.7; width: 3px; }
+            50% { opacity: 1; width: 5px; }
+            100% { opacity: 0; width: 2px; }
+        }
+        
+        .explosion {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff0, #f0f, transparent);
+            animation: explode 0.5s forwards;
+            z-index: 10;
+        }
+        
+        @keyframes explode {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        #player {
+            position: absolute;
+            bottom: 120px; /* Moved up from 20px to 120px */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 60px;
+            z-index: 100;
+        }
+        
+        .control-button {
+            position: absolute;
+            bottom: 20px;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(to bottom right, #f0f, #90f);
+            border: 3px solid white;
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 100;
+            user-select: none;
+            transition: transform 0.1s;
+        }
+        
+        .control-button:active {
+            transform: scale(0.9);
+        }
+        
+        #left-button {
+            left: 20px;
+        }
+        
+        #right-button {
+            left: 110px;
+        }
+        
+        #shoot-button {
+            right: 20px;
+        }
+        
+        #answer-display {
+            position: absolute;
+            bottom: 180px; /* Moved up from 100px to 180px */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 2px solid #f0f;
+            min-width: 300px;
+            text-align: center;
+            z-index: 50;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: confetti-fall 3s ease-in-out forwards;
+        }
+        
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle 2s infinite alternate;
+        }
+        
+        @keyframes twinkle {
+            0% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        .modal {
+            background-color: rgba(0, 0, 0, 0.9);
+            border: 2px solid #f0f;
+            border-radius: 20px;
+            box-shadow: 0 0 20px #f0f;
+        }
+        
+        .btn {
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px currentColor;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Custom range slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #f0f;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #f0f;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .bullet {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            background: linear-gradient(to top, #f0f, #fff);
+            border-radius: 5px;
+            z-index: 5;
+            animation: bullet-travel 1s linear forwards;
+        }
+        
+        @keyframes bullet-travel {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-2000px); opacity: 0.7; }
+        }
+        
+        .dragging {
+            animation-play-state: paused !important;
+            opacity: 0.8;
+            z-index: 1000;
+        }
+        
+        .infinity-symbol {
+            display: inline-block;
+            font-size: 24px;
+            transform: rotate(90deg);
+            margin-left: 5px;
+        }
+        
+        /* Sentence preview animation */
+        .sentence-preview {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            color: #f0f;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            border: 2px solid #f0f;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+            max-width: 80%;
+            margin: 0 auto;
+        }
+        
+        @keyframes scatter {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0.5);
+                opacity: 0;
+            }
+        }
+        
+        .scatter-word {
+            display: inline-block;
+            animation: scatter 1s forwards;
+            position: relative;
+            white-space: nowrap;
+        }
+    
+@media (max-width: 600px) {
+    body {
+        font-size: 14px;
+        padding: 10px;
+    }
+    td, th {
+        padding: 6px;
+    }
+    .control-button {
+        width: 60px;
+        height: 60px;
+        font-size: 20px;
+    }
+    .sentence-preview {
+        font-size: 20px;
+    }
+}
+
+</style>
+</head>
+<body>
+    <!-- Game Container -->
+    <div id="game-container">
+        <!-- Stars background -->
+        <div id="stars-container"></div>
+        
+        <!-- Player spaceship -->
+        <div id="player">
+            <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+                <path d="M30 5 L50 50 L30 40 L10 50 Z" fill="#f0f" stroke="#fff" stroke-width="2"/>
+            </svg>
+        </div>
+        
+        <!-- Control buttons -->
+        <div id="left-button" class="control-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18L9 12L15 6" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        
+        <div id="right-button" class="control-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18L15 12L9 6" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        
+        <div id="shoot-button" class="control-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 19L12 5M12 5L6 11M12 5L18 11" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        
+        <!-- Answer display -->
+        <div id="answer-display">
+            <p class="text-lg font-bold mb-1">Your Sentence:</p>
+            <div id="current-answer" class="text-xl"></div>
+        </div>
+        
+        <!-- HUD -->
+        <div class="absolute top-4 left-4 right-4 flex justify-between items-center">
+            <div class="bg-black bg-opacity-70 p-3 rounded-lg border border-fuchsia-500">
+                <p class="text-lg">Score: <span id="score" class="font-bold text-fuchsia-400">0</span></p>
+            </div>
+            
+            <div class="bg-black bg-opacity-70 p-3 rounded-lg border border-fuchsia-500">
+                <p class="text-lg">Sentences: <span id="sentences-counter" class="font-bold text-fuchsia-400">0</span>/<span id="total-sentences" class="font-bold text-fuchsia-400">5</span></p>
+            </div>
+            
+            <div>
+                <button id="settings-btn" class="bg-fuchsia-700 hover:bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-full btn">
+                    ⚙️ Settings
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Start Screen -->
+    <div id="start-screen" class="fixed inset-0 flex items-center justify-center z-50 bg-black">
+        <div class="modal p-8 max-w-lg w-full text-center">
+            <h1 class="text-4xl font-bold text-fuchsia-400 mb-4">Word Shooter</h1>
+            <p class="text-xl mb-6">Shoot the words in the correct order to form sentences!</p>
+            
+            <div class="mb-6">
+                <label class="block text-left mb-2">Word Speed:</label>
+                <input type="range" id="speed-slider" min="1" max="10" value="5" class="mb-2">
+                <div class="flex justify-between text-sm">
+                    <span>Slow</span>
+                    <span>Fast</span>
+                </div>
+            </div>
+            
+            <button id="start-btn" class="bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-3 px-8 rounded-full text-xl btn">
+                Start Game
+            </button>
+            
+            <button id="edit-sentences-btn" class="mt-4 bg-fuchsia-800 hover:bg-fuchsia-700 text-white font-bold py-2 px-6 rounded-full btn">
+                Edit Sentences
+            </button>
+            
+            <div class="mt-6 text-left">
+                <h3 class="text-lg font-bold mb-2">How to Play:</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>Use the left and right buttons to move your spaceship</li>
+                    <li>Press the up arrow button to shoot</li>
+                    <li>Hit the words in the correct order to form sentences</li>
+                    <li>You can drag words to reposition them if they're blocking each other</li>
+                    <li>Complete all sentences to win!</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sentence Preview Screen -->
+    <div id="sentence-preview-screen" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-90 hidden">
+        <div class="flex flex-col items-center justify-center w-full">
+            <div id="sentence-preview" class="sentence-preview mb-8"></div>
+            <p class="text-xl mb-6 text-white">Remember this sentence!</p>
+            <button id="ready-btn" class="bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-3 px-8 rounded-full text-xl btn">
+                I'm Ready!
+            </button>
+        </div>
+    </div>
+    
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-90 hidden">
+        <div class="modal p-8 max-w-lg w-full text-center">
+            <h1 class="text-4xl font-bold text-fuchsia-400 mb-4">Game Over</h1>
+            <p class="text-2xl mb-2">Your Score: <span id="final-score" class="font-bold">0</span></p>
+            <p class="text-xl mb-6">Sentences Completed: <span id="sentences-completed" class="font-bold">0</span></p>
+            
+            <button id="play-again-btn" class="bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-3 px-8 rounded-full text-xl btn">
+                Play Again
+            </button>
+        </div>
+    </div>
+    
+    <!-- All Sentences Completed Screen -->
+    <div id="all-completed-screen" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-90 hidden">
+        <div class="modal p-8 max-w-lg w-full text-center">
+            <h1 class="text-4xl font-bold text-fuchsia-400 mb-4">All Sentences Completed!</h1>
+            <p class="text-2xl mb-2">Your Score: <span id="final-complete-score" class="font-bold">0</span></p>
+            <p class="text-xl mb-6">You've completed all sentences!</p>
+            
+            <button id="restart-btn" class="bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-3 px-8 rounded-full text-xl btn">
+                Play Again
+            </button>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-90 hidden">
+        <div class="modal p-8 max-w-lg w-full">
+            <h2 class="text-2xl font-bold text-fuchsia-400 mb-4">Settings</h2>
+            
+            <div class="mb-6">
+                <label class="block mb-2">Word Speed:</label>
+                <input type="range" id="game-speed-slider" min="1" max="10" value="5" class="mb-2">
+                <div class="flex justify-between text-sm">
+                    <span>Slow</span>
+                    <span>Fast</span>
+                </div>
+            </div>
+            
+            <div class="flex justify-end">
+                <button id="close-settings-btn" class="bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-2 px-6 rounded-full btn">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Sentences Modal -->
+    <div id="edit-modal" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-90 hidden">
+        <div class="modal p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold text-fuchsia-400 mb-4">Edit Sentences</h2>
+            <p class="text-gray-300 mb-4">Enter one sentence per line. The game will use these sentences for the word shooting challenges.</p>
+            
+            <textarea id="sentences-editor" class="w-full h-64 p-4 bg-gray-900 text-white border-2 border-fuchsia-500 rounded-lg mb-4" placeholder="Enter sentences here, one per line..."></textarea>
+            
+            <div class="flex justify-end gap-4">
+                <button id="cancel-edit-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-full btn">
+                    Cancel
+                </button>
+                <button id="save-edit-btn" class="bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-2 px-6 rounded-full btn">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default sentences
+        let sentences = [
+            "Hello. My name is Jamie",
+            "What's your name?",
+            "My name is Sara.",
+            "Nice to meet you.",
+            "Nice to meet you, too.",
+            "How old are you, Sara?",
+            "I'm seven years old.",
+            "How old are you?",
+            "I'm seven years old, too."
+        ];
+        
+        // Game variables
+        let currentSentence = "";
+        let currentWords = [];
+        let selectedWords = [];
+        let fallingWords = [];
+        let gameSpeed = 5;
+        let score = 0;
+        let level = 1;
+        let lives = Infinity; // Set lives to infinity
+        let gameActive = false;
+        let sentencesCompleted = 0;
+        let playerPosition = { x: window.innerWidth / 2, y: window.innerHeight - 120 }; // Updated Y position
+        let bullets = [];
+        let lastShootTime = 0;
+        let shootCooldown = 300; // milliseconds between shots
+        let nextWordIndex = 0;
+        let draggedWord = null;
+        let dragOffset = { x: 0, y: 0 };
+        let moveLeftInterval = null;
+        let moveRightInterval = null;
+        let moveSpeed = 5; // pixels per frame
+        let firstRoundWordCount = 0; // Track the number of words in the first round
+        let isFirstRound = true; // Flag to track if it's the first round
+        let completedSentences = []; // Track which sentences have been completed
+        let currentSentenceIndex = -1; // Current sentence index
+        let availableSentences = []; // Sentences that haven't been completed yet
+        
+        // DOM elements
+        const gameContainer = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const leftButton = document.getElementById('left-button');
+        const rightButton = document.getElementById('right-button');
+        const shootButton = document.getElementById('shoot-button');
+        const currentAnswerEl = document.getElementById('current-answer');
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const sentencesCounterEl = document.getElementById('sentences-counter');
+        const totalSentencesEl = document.getElementById('total-sentences');
+        const startScreen = document.getElementById('start-screen');
+        const sentencePreviewScreen = document.getElementById('sentence-preview-screen');
+        const sentencePreviewEl = document.getElementById('sentence-preview');
+        const readyBtn = document.getElementById('ready-btn');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreEl = document.getElementById('final-score');
+        const sentencesCompletedEl = document.getElementById('sentences-completed');
+        const startBtn = document.getElementById('start-btn');
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const speedSlider = document.getElementById('speed-slider');
+        const gameSpeedSlider = document.getElementById('game-speed-slider');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const editSentencesBtn = document.getElementById('edit-sentences-btn');
+        const editModal = document.getElementById('edit-modal');
+        const sentencesEditor = document.getElementById('sentences-editor');
+        const saveEditBtn = document.getElementById('save-edit-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const starsContainer = document.getElementById('stars-container');
+        const allCompletedScreen = document.getElementById('all-completed-screen');
+        const finalCompleteScoreEl = document.getElementById('final-complete-score');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        // Create stars background
+        function createStars() {
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                star.style.width = `${Math.random() * 3 + 1}px`;
+                star.style.height = star.style.width;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.animationDelay = `${Math.random() * 2}s`;
+                starsContainer.appendChild(star);
+            }
+        }
+        
+        // Initialize the game
+        function initGame() {
+            // Reset game variables
+            score = 0;
+            level = 1;
+            lives = Infinity; // Set lives to infinity
+            sentencesCompleted = 0;
+            selectedWords = [];
+            fallingWords = [];
+            bullets = [];
+            nextWordIndex = 0;
+            gameActive = true;
+            isFirstRound = true; // Reset first round flag
+            firstRoundWordCount = 0; // Reset first round word count
+            completedSentences = []; // Reset completed sentences
+            availableSentences = [...Array(sentences.length).keys()]; // All sentences are available at start
+            
+            // Center the player
+            playerPosition = { x: window.innerWidth / 2, y: window.innerHeight - 120 }; // Updated Y position
+            player.style.left = `${playerPosition.x - 30}px`;
+            
+            // Update UI
+            scoreEl.textContent = score;
+            currentAnswerEl.textContent = "";
+            sentencesCounterEl.textContent = sentencesCompleted;
+            totalSentencesEl.textContent = sentences.length;
+            
+            // Clear any existing falling words and bullets
+            const existingWords = document.querySelectorAll('.falling-word');
+            existingWords.forEach(word => word.remove());
+            
+            const existingBullets = document.querySelectorAll('.bullet');
+            existingBullets.forEach(bullet => bullet.remove());
+            
+            // Start the game with sentence preview
+            showSentencePreview();
+        }
+        
+        // Show sentence preview before starting the game
+        function showSentencePreview() {
+            // If all sentences have been completed, show the all completed screen
+            if (availableSentences.length === 0) {
+                showAllCompletedScreen();
+                return;
+            }
+            
+            // Get a random sentence that hasn't been completed yet
+            const randomIndex = Math.floor(Math.random() * availableSentences.length);
+            const sentenceIndex = availableSentences[randomIndex];
+            currentSentence = sentences[sentenceIndex];
+            currentSentenceIndex = sentenceIndex; // Store the index for tracking completion
+            currentWords = currentSentence.split(' ');
+            selectedWords = [];
+            nextWordIndex = 0;
+            
+            // Display the sentence
+            sentencePreviewEl.textContent = currentSentence;
+            sentencePreviewScreen.classList.remove('hidden');
+        }
+        
+        // Show the all completed screen
+        function showAllCompletedScreen() {
+            gameActive = false;
+            finalCompleteScoreEl.textContent = score;
+            allCompletedScreen.classList.remove('hidden');
+        }
+        
+        // Start the game after sentence preview
+        function startGameAfterPreview() {
+            sentencePreviewScreen.classList.add('hidden');
+            
+            // Create scatter effect for the sentence
+            createScatterEffect();
+            
+            // Update the answer display
+            updateAnswerDisplay();
+            
+            // Start dropping words after a short delay
+            setTimeout(() => {
+                startDroppingWords();
+                gameLoop();
+            }, 1000);
+        }
+        
+        // Create scatter effect for the sentence
+        function createScatterEffect() {
+            // Create a container for the scatter effect
+            const scatterContainer = document.createElement('div');
+            scatterContainer.style.position = 'absolute';
+            scatterContainer.style.top = '50%';
+            scatterContainer.style.left = '50%';
+            scatterContainer.style.transform = 'translate(-50%, -50%)';
+            scatterContainer.style.fontSize = '28px';
+            scatterContainer.style.fontWeight = 'bold';
+            scatterContainer.style.color = '#f0f';
+            scatterContainer.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.7)';
+            scatterContainer.style.zIndex = '100';
+            gameContainer.appendChild(scatterContainer);
+            
+            // Create span for each word
+            currentWords.forEach((word, index) => {
+                const wordSpan = document.createElement('span');
+                wordSpan.textContent = word + ' ';
+                wordSpan.classList.add('scatter-word');
+                
+                // Random direction for scattering
+                const tx = (Math.random() - 0.5) * window.innerWidth;
+                const ty = (Math.random() - 0.5) * window.innerHeight;
+                wordSpan.style.setProperty('--tx', `${tx}px`);
+                wordSpan.style.setProperty('--ty', `${ty}px`);
+                
+                scatterContainer.appendChild(wordSpan);
+            });
+            
+            // Remove the scatter effect after animation
+            setTimeout(() => {
+                scatterContainer.remove();
+            }, 1000);
+        }
+        
+        // Generate a list of words to drop, including decoys
+        function generateWordsToDrop() {
+            // Start with the actual words from the sentence
+            let wordsToDrop = [...currentWords];
+            
+            // If it's not the first round, add decoy words to match the first round count
+            if (!isFirstRound && firstRoundWordCount > currentWords.length) {
+                // Calculate how many decoy words we need
+                const decoyCount = firstRoundWordCount - currentWords.length;
+                
+                // Create decoy words (duplicates from the current sentence)
+                for (let i = 0; i < decoyCount; i++) {
+                    // Pick a random word from the current sentence
+                    const randomWord = currentWords[Math.floor(Math.random() * currentWords.length)];
+                    wordsToDrop.push(randomWord);
+                }
+            }
+            
+            // Shuffle the words
+            for (let i = wordsToDrop.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [wordsToDrop[i], wordsToDrop[j]] = [wordsToDrop[j], wordsToDrop[i]];
+            }
+            
+            return wordsToDrop;
+        }
+        
+        // Start dropping words
+        function startDroppingWords() {
+            // Generate words to drop (including decoys if needed)
+            const wordsToDrop = generateWordsToDrop();
+            
+            // If this is the first round, store the word count
+            if (isFirstRound) {
+                firstRoundWordCount = wordsToDrop.length;
+                isFirstRound = false;
+            }
+            
+            // Create an array of horizontal positions that are well-distributed
+            const screenWidth = window.innerWidth;
+            const positions = [];
+            
+            // Divide the screen into sections based on word count
+            const sectionWidth = screenWidth / (wordsToDrop.length + 1);
+            
+            // Create positions with some randomness within each section
+            for (let i = 0; i < wordsToDrop.length; i++) {
+                const basePosition = sectionWidth * (i + 1);
+                // Add some randomness within the section (±30% of section width)
+                const randomOffset = (Math.random() - 0.5) * sectionWidth * 0.6;
+                positions.push(basePosition + randomOffset);
+            }
+            
+            // Shuffle positions to avoid correlation between position and word order
+            for (let i = positions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [positions[i], positions[j]] = [positions[j], positions[i]];
+            }
+            
+            // Drop each word with a delay and at its assigned position
+            wordsToDrop.forEach((word, index) => {
+                setTimeout(() => {
+                    if (gameActive) {
+                        createFallingWord(word, positions[index]);
+                    }
+                }, index * (2000 / gameSpeed));
+            });
+        }
+        
+        // Create a falling word at a specific horizontal position
+        function createFallingWord(word, xPos = null) {
+            // Create the element
+            const wordEl = document.createElement('div');
+            wordEl.classList.add('falling-word');
+            wordEl.textContent = word;
+            wordEl.dataset.word = word;
+            
+            // Position and color
+            // If xPos is not provided, use random position
+            if (xPos === null) {
+                xPos = Math.random() * (window.innerWidth - 100) + 50;
+            }
+            
+            const colors = ['#ff1493', '#00ffff', '#ffff00', '#ff8c00', '#7cfc00', '#9370db'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            wordEl.style.left = `${xPos}px`;
+            wordEl.style.backgroundColor = color;
+            wordEl.style.animationDuration = `${12 - gameSpeed}s`;
+            
+            // Add to game container
+            gameContainer.appendChild(wordEl);
+            
+            // Add to falling words array
+            fallingWords.push({
+                element: wordEl,
+                word: word,
+                x: xPos,
+                y: 0,
+                width: 0,
+                height: 0,
+                rect: null,
+                isNextWord: word === currentWords[nextWordIndex]
+            });
+            
+            // Get dimensions after element is rendered
+            setTimeout(() => {
+                const rect = wordEl.getBoundingClientRect();
+                const wordIndex = fallingWords.findIndex(fw => fw.element === wordEl);
+                if (wordIndex !== -1) {
+                    fallingWords[wordIndex].width = rect.width;
+                    fallingWords[wordIndex].height = rect.height;
+                    fallingWords[wordIndex].rect = rect;
+                }
+            }, 50);
+            
+            // Make word draggable
+            setupDraggable(wordEl);
+            
+            // Remove when animation ends
+            wordEl.addEventListener('animationend', () => {
+                // Word reached bottom without being clicked
+                if (gameActive && wordEl.parentNode) {
+                    wordEl.remove();
+                    
+                    // Remove from falling words array
+                    const index = fallingWords.findIndex(fw => fw.element === wordEl);
+                    if (index !== -1) {
+                        const removedWord = fallingWords[index];
+                        fallingWords.splice(index, 1);
+                        
+                        // If it was the next word, drop a new instance after a delay
+                        if (removedWord.isNextWord) {
+                            // Drop a new instance of the next word after a delay
+                            setTimeout(() => {
+                                if (gameActive && nextWordIndex < currentWords.length) {
+                                    createFallingWord(currentWords[nextWordIndex]);
+                                }
+                            }, 1000);
+                        }
+                    }
+                    
+                    // Check if we need to drop more words
+                    if (fallingWords.length === 0 && nextWordIndex < currentWords.length) {
+                        // No words on screen but sentence not complete, drop more words
+                        setTimeout(() => {
+                            if (gameActive) {
+                                // Drop a mix of required words and decoys
+                                const remainingWords = currentWords.slice(nextWordIndex);
+                                const decoyCount = Math.max(0, firstRoundWordCount - remainingWords.length);
+                                
+                                // Add the next required word
+                                createFallingWord(currentWords[nextWordIndex]);
+                                
+                                // Add some decoy words
+                                for (let i = 0; i < Math.min(3, decoyCount); i++) {
+                                    setTimeout(() => {
+                                        if (gameActive) {
+                                            // Pick a random word from the current sentence as decoy
+                                            const randomWord = currentWords[Math.floor(Math.random() * currentWords.length)];
+                                            createFallingWord(randomWord);
+                                        }
+                                    }, (i + 1) * 500);
+                                }
+                            }
+                        }, 1000);
+                    }
+                }
+            });
+        }
+        
+        // Setup draggable functionality for words
+        function setupDraggable(element) {
+            // Mouse events
+            element.addEventListener('mousedown', startDrag);
+            
+            // Touch events
+            element.addEventListener('touchstart', startDragTouch, { passive: false });
+        }
+        
+        // Start dragging a word (mouse)
+        function startDrag(e) {
+            if (!gameActive) return;
+            
+            // Prevent default to avoid text selection
+            e.preventDefault();
+            
+            // Find the word object
+            const wordEl = e.currentTarget;
+            const wordIndex = fallingWords.findIndex(fw => fw.element === wordEl);
+            
+            if (wordIndex !== -1) {
+                // Pause the animation
+                wordEl.style.animationPlayState = 'paused';
+                wordEl.classList.add('dragging');
+                
+                // Store the dragged word
+                draggedWord = fallingWords[wordIndex];
+                
+                // Calculate offset
+                const rect = wordEl.getBoundingClientRect();
+                dragOffset = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                
+                // Add move and end event listeners
+                document.addEventListener('mousemove', dragWord);
+                document.addEventListener('mouseup', endDrag);
+            }
+        }
+        
+        // Start dragging a word (touch)
+        function startDragTouch(e) {
+            if (!gameActive) return;
+            
+            // Prevent default to avoid scrolling
+            e.preventDefault();
+            
+            // Find the word object
+            const wordEl = e.currentTarget;
+            const wordIndex = fallingWords.findIndex(fw => fw.element === wordEl);
+            
+            if (wordIndex !== -1 && e.touches[0]) {
+                // Pause the animation
+                wordEl.style.animationPlayState = 'paused';
+                wordEl.classList.add('dragging');
+                
+                // Store the dragged word
+                draggedWord = fallingWords[wordIndex];
+                
+                // Calculate offset
+                const rect = wordEl.getBoundingClientRect();
+                dragOffset = {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
+                
+                // Add move and end event listeners
+                document.addEventListener('touchmove', dragWordTouch, { passive: false });
+                document.addEventListener('touchend', endDragTouch);
+            }
+        }
+        
+        // Drag the word (mouse)
+        function dragWord(e) {
+            if (!draggedWord || !draggedWord.element) return;
+            
+            // Calculate new position
+            const x = e.clientX - dragOffset.x;
+            const y = e.clientY - dragOffset.y;
+            
+            // Update element position
+            draggedWord.element.style.left = `${x}px`;
+            draggedWord.element.style.top = `${y}px`;
+            
+            // Update word object position
+            draggedWord.x = x + draggedWord.width / 2;
+            draggedWord.y = y + draggedWord.height / 2;
+            draggedWord.rect = draggedWord.element.getBoundingClientRect();
+        }
+        
+        // Drag the word (touch)
+        function dragWordTouch(e) {
+            if (!draggedWord || !draggedWord.element || !e.touches[0]) return;
+            
+            // Prevent default to avoid scrolling
+            e.preventDefault();
+            
+            // Calculate new position
+            const x = e.touches[0].clientX - dragOffset.x;
+            const y = e.touches[0].clientY - dragOffset.y;
+            
+            // Update element position
+            draggedWord.element.style.left = `${x}px`;
+            draggedWord.element.style.top = `${y}px`;
+            
+            // Update word object position
+            draggedWord.x = x + draggedWord.width / 2;
+            draggedWord.y = y + draggedWord.height / 2;
+            draggedWord.rect = draggedWord.element.getBoundingClientRect();
+        }
+        
+        // End dragging (mouse)
+        function endDrag() {
+            if (!draggedWord || !draggedWord.element) return;
+            
+            // Resume animation but keep the current position
+            draggedWord.element.style.animationPlayState = 'running';
+            draggedWord.element.classList.remove('dragging');
+            
+            // Clear dragged word
+            draggedWord = null;
+            
+            // Remove event listeners
+            document.removeEventListener('mousemove', dragWord);
+            document.removeEventListener('mouseup', endDrag);
+        }
+        
+        // End dragging (touch)
+        function endDragTouch() {
+            if (!draggedWord || !draggedWord.element) return;
+            
+            // Resume animation but keep the current position
+            draggedWord.element.style.animationPlayState = 'running';
+            draggedWord.element.classList.remove('dragging');
+            
+            // Clear dragged word
+            draggedWord = null;
+            
+            // Remove event listeners
+            document.removeEventListener('touchmove', dragWordTouch);
+            document.removeEventListener('touchend', endDragTouch);
+        }
+        
+        // Move player left
+        function movePlayerLeft() {
+            playerPosition.x -= moveSpeed;
+            
+            // Keep player within screen bounds
+            if (playerPosition.x < 30) {
+                playerPosition.x = 30;
+            }
+            
+            player.style.left = `${playerPosition.x - 30}px`;
+        }
+        
+        // Move player right
+        function movePlayerRight() {
+            playerPosition.x += moveSpeed;
+            
+            // Keep player within screen bounds
+            if (playerPosition.x > window.innerWidth - 30) {
+                playerPosition.x = window.innerWidth - 30;
+            }
+            
+            player.style.left = `${playerPosition.x - 30}px`;
+        }
+        
+        // Shoot a bullet
+        function shootBullet(e) {
+            // Prevent event from bubbling up to document
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            const now = Date.now();
+            if (now - lastShootTime < shootCooldown) return;
+            lastShootTime = now;
+            
+            // Create bullet element
+            const bullet = document.createElement('div');
+            bullet.classList.add('bullet');
+            bullet.style.left = `${playerPosition.x - 5}px`; // Center the bullet
+            bullet.style.top = `${playerPosition.y - 20}px`; // Position at top of player
+            
+            // Add to game container
+            gameContainer.appendChild(bullet);
+            
+            // Add to bullets array
+            bullets.push({
+                element: bullet,
+                x: playerPosition.x,
+                y: playerPosition.y,
+                active: true
+            });
+            
+            // Play sound effect
+            playSound('shoot');
+            
+            // Remove bullet after animation
+            bullet.addEventListener('animationend', () => {
+                if (bullet.parentNode) {
+                    bullet.remove();
+                }
+                
+                // Remove from bullets array
+                const index = bullets.findIndex(b => b.element === bullet);
+                if (index !== -1) {
+                    bullets.splice(index, 1);
+                }
+            });
+        }
+        
+        // Check bullet collisions
+        function checkBulletCollisions() {
+            // Update falling word positions
+            fallingWords.forEach(word => {
+                if (word.element && word.element.parentNode) {
+                    const rect = word.element.getBoundingClientRect();
+                    word.rect = rect;
+                    word.x = rect.left + rect.width / 2;
+                    word.y = rect.top + rect.height / 2;
+                }
+            });
+            
+            // Check each bullet
+            bullets.forEach(bullet => {
+                if (!bullet.active) return;
+                
+                const bulletRect = bullet.element.getBoundingClientRect();
+                const bulletX = bulletRect.left + bulletRect.width / 2;
+                const bulletY = bulletRect.top;
+                
+                // Check collision with each word
+                for (let i = 0; i < fallingWords.length; i++) {
+                    const word = fallingWords[i];
+                    if (!word.rect) continue;
+                    
+                    // Simple collision detection
+                    if (bulletX >= word.rect.left && 
+                        bulletX <= word.rect.right && 
+                        bulletY >= word.rect.top && 
+                        bulletY <= word.rect.bottom) {
+                        
+                        // Collision detected
+                        bullet.active = false;
+                        
+                        // Handle word hit
+                        handleWordHit(word);
+                        
+                        // Remove bullet
+                        if (bullet.element.parentNode) {
+                            bullet.element.remove();
+                        }
+                        
+                        // Break since this bullet hit something
+                        break;
+                    }
+                }
+            });
+        }
+        
+        // Handle word hit
+        function handleWordHit(wordObj) {
+            if (!gameActive) return;
+            
+            const wordEl = wordObj.element;
+            const word = wordObj.word;
+            
+            // Create explosion effect
+            const explosion = document.createElement('div');
+            explosion.classList.add('explosion');
+            explosion.style.left = `${wordObj.x - 25}px`;
+            explosion.style.top = `${wordObj.y - 25}px`;
+            gameContainer.appendChild(explosion);
+            
+            // Remove explosion after animation
+            setTimeout(() => {
+                explosion.remove();
+            }, 500);
+            
+            // Check if this is the next correct word
+            const nextCorrectWord = currentWords[nextWordIndex];
+            
+            if (word === nextCorrectWord) {
+                // Correct word
+                selectedWords.push(word);
+                nextWordIndex++;
+                updateAnswerDisplay();
+                
+                // Remove word
+                if (wordEl.parentNode) {
+                    wordEl.remove();
+                }
+                
+                // Remove from falling words array
+                const index = fallingWords.findIndex(fw => fw.element === wordEl);
+                if (index !== -1) {
+                    fallingWords.splice(index, 1);
+                }
+                
+                // Play sound effect
+                playSound('correct');
+                
+                // Add points
+                score += 10 * level;
+                scoreEl.textContent = score;
+                
+                // Check if sentence is complete
+                if (nextWordIndex >= currentWords.length) {
+                    // Sentence completed
+                    sentencesCompleted++;
+                    
+                    // Remove this sentence from available sentences
+                    const availableIndex = availableSentences.indexOf(currentSentenceIndex);
+                    if (availableIndex !== -1) {
+                        availableSentences.splice(availableIndex, 1);
+                    }
+                    
+                    // Update the counter
+                    sentencesCounterEl.textContent = sentencesCompleted;
+                    
+                    createConfetti();
+                    playSound('complete');
+                    
+                    // Load new sentence after a delay
+                    setTimeout(() => {
+                        if (gameActive) {
+                            loadNewSentence();
+                        }
+                    }, 2000);
+                } else {
+                    // Check if the next word is already on screen
+                    const nextWordExists = fallingWords.some(w => w.word === currentWords[nextWordIndex]);
+                    
+                    // If not, create it along with some decoys to maintain word density
+                    if (!nextWordExists) {
+                        setTimeout(() => {
+                            if (gameActive) {
+                                // Add the next required word
+                                createFallingWord(currentWords[nextWordIndex]);
+                                
+                                // Add some decoy words to maintain density
+                                const decoyCount = Math.min(3, Math.max(1, firstRoundWordCount / currentWords.length - 1));
+                                for (let i = 0; i < decoyCount; i++) {
+                                    setTimeout(() => {
+                                        if (gameActive && nextWordIndex < currentWords.length) {
+                                            // Pick a random word from the current sentence as decoy
+                                            const randomWord = currentWords[Math.floor(Math.random() * currentWords.length)];
+                                            createFallingWord(randomWord);
+                                        }
+                                    }, (i + 1) * 500);
+                                }
+                            }
+                        }, 500);
+                    }
+                }
+            } else {
+                // Wrong word - show visual feedback but don't lose lives
+                playSound('wrong');
+                
+                // Create a red X effect
+                const wrongMark = document.createElement('div');
+                wrongMark.textContent = "✗";
+                wrongMark.style.position = "absolute";
+                wrongMark.style.left = `${wordObj.x - 15}px`;
+                wrongMark.style.top = `${wordObj.y - 15}px`;
+                wrongMark.style.fontSize = "30px";
+                wrongMark.style.color = "#ff0000";
+                wrongMark.style.fontWeight = "bold";
+                wrongMark.style.zIndex = "20";
+                gameContainer.appendChild(wrongMark);
+                
+                // Animate and remove
+                setTimeout(() => {
+                    wrongMark.style.transition = "all 0.5s";
+                    wrongMark.style.opacity = "0";
+                    wrongMark.style.transform = "scale(2)";
+                    setTimeout(() => wrongMark.remove(), 500);
+                }, 100);
+            }
+        }
+        
+        // Update the answer display
+        function updateAnswerDisplay() {
+            currentAnswerEl.textContent = selectedWords.join(' ');
+        }
+        
+        // Load a new sentence
+        function loadNewSentence() {
+            // Clear falling words
+            fallingWords.forEach(word => {
+                if (word.element && word.element.parentNode) {
+                    word.element.remove();
+                }
+            });
+            fallingWords = [];
+            
+            // Show sentence preview
+            showSentencePreview();
+        }
+        
+        // Create confetti effect for completed sentences
+        function createConfetti() {
+            const colors = ['#ff1493', '#00ffff', '#ffff00', '#ff8c00', '#7cfc00', '#9370db'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.width = `${Math.random() * 10 + 5}px`;
+                confetti.style.height = confetti.style.width;
+                confetti.style.animationDuration = `${Math.random() * 2 + 2}s`;
+                document.body.appendChild(confetti);
+                
+                // Remove confetti after animation
+                setTimeout(() => {
+                    confetti.remove();
+                }, 3000);
+            }
+        }
+        
+        // Play sound effects (silent implementation since audio is not supported)
+        function playSound(type) {
+            // This is a placeholder for sound effects
+            // In a real implementation, this would play sounds
+            console.log(`Playing sound: ${type}`);
+        }
+        
+        // Game loop
+        function gameLoop() {
+            if (!gameActive) return;
+            
+            // Check bullet collisions
+            checkBulletCollisions();
+            
+            // Continue the game loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Left button controls
+        leftButton.addEventListener('mousedown', () => {
+            if (gameActive) {
+                // Clear any existing interval
+                if (moveRightInterval) {
+                    clearInterval(moveRightInterval);
+                    moveRightInterval = null;
+                }
+                
+                // Start moving left
+                movePlayerLeft();
+                moveLeftInterval = setInterval(movePlayerLeft, 16);
+            }
+        });
+        
+        leftButton.addEventListener('mouseup', () => {
+            if (moveLeftInterval) {
+                clearInterval(moveLeftInterval);
+                moveLeftInterval = null;
+            }
+        });
+        
+        leftButton.addEventListener('mouseleave', () => {
+            if (moveLeftInterval) {
+                clearInterval(moveLeftInterval);
+                moveLeftInterval = null;
+            }
+        });
+        
+        // Right button controls
+        rightButton.addEventListener('mousedown', () => {
+            if (gameActive) {
+                // Clear any existing interval
+                if (moveLeftInterval) {
+                    clearInterval(moveLeftInterval);
+                    moveLeftInterval = null;
+                }
+                
+                // Start moving right
+                movePlayerRight();
+                moveRightInterval = setInterval(movePlayerRight, 16);
+            }
+        });
+        
+        rightButton.addEventListener('mouseup', () => {
+            if (moveRightInterval) {
+                clearInterval(moveRightInterval);
+                moveRightInterval = null;
+            }
+        });
+        
+        rightButton.addEventListener('mouseleave', () => {
+            if (moveRightInterval) {
+                clearInterval(moveRightInterval);
+                moveRightInterval = null;
+            }
+        });
+        
+        // Shoot button
+        shootButton.addEventListener('click', (e) => {
+            if (gameActive) {
+                shootBullet(e);
+            }
+        });
+        
+        // Touch events for mobile
+        leftButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameActive) {
+                // Clear any existing interval
+                if (moveRightInterval) {
+                    clearInterval(moveRightInterval);
+                    moveRightInterval = null;
+                }
+                
+                // Start moving left
+                movePlayerLeft();
+                moveLeftInterval = setInterval(movePlayerLeft, 16);
+            }
+        }, { passive: false });
+        
+        leftButton.addEventListener('touchend', () => {
+            if (moveLeftInterval) {
+                clearInterval(moveLeftInterval);
+                moveLeftInterval = null;
+            }
+        });
+        
+        rightButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameActive) {
+                // Clear any existing interval
+                if (moveLeftInterval) {
+                    clearInterval(moveLeftInterval);
+                    moveLeftInterval = null;
+                }
+                
+                // Start moving right
+                movePlayerRight();
+                moveRightInterval = setInterval(movePlayerRight, 16);
+            }
+        }, { passive: false });
+        
+        rightButton.addEventListener('touchend', () => {
+            if (moveRightInterval) {
+                clearInterval(moveRightInterval);
+                moveRightInterval = null;
+            }
+        });
+        
+        shootButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameActive) {
+                shootBullet(e);
+            }
+        }, { passive: false });
+        
+        // Start button click
+        startBtn.addEventListener('click', () => {
+            gameSpeed = parseInt(speedSlider.value);
+            gameSpeedSlider.value = gameSpeed;
+            startScreen.classList.add('hidden');
+            initGame();
+        });
+        
+        // Ready button click
+        readyBtn.addEventListener('click', () => {
+            startGameAfterPreview();
+        });
+        
+        // Play again button click
+        playAgainBtn.addEventListener('click', () => {
+            gameOverScreen.classList.add('hidden');
+            initGame();
+        });
+        
+        // Restart button click (for all completed screen)
+        restartBtn.addEventListener('click', () => {
+            allCompletedScreen.classList.add('hidden');
+            initGame();
+        });
+        
+        // Settings button click
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
+        
+        // Close settings button click
+        closeSettingsBtn.addEventListener('click', () => {
+            gameSpeed = parseInt(gameSpeedSlider.value);
+            settingsModal.classList.add('hidden');
+        });
+        
+        // Edit sentences button click
+        editSentencesBtn.addEventListener('click', () => {
+            sentencesEditor.value = sentences.join('\n');
+            editModal.classList.remove('hidden');
+        });
+        
+        // Save edit button click
+        saveEditBtn.addEventListener('click', () => {
+            const newSentences = sentencesEditor.value.split('\n').filter(s => s.trim() !== '');
+            
+            if (newSentences.length > 0) {
+                sentences = newSentences;
+                totalSentencesEl.textContent = sentences.length;
+                editModal.classList.add('hidden');
+            } else {
+                alert('Please enter at least one sentence.');
+            }
+        });
+        
+        // Cancel edit button click
+        cancelEditBtn.addEventListener('click', () => {
+            editModal.classList.add('hidden');
+        });
+        
+        // Add keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            
+            switch (e.key) {
+                case 'ArrowLeft':
+                    movePlayerLeft();
+                    break;
+                case 'ArrowRight':
+                    movePlayerRight();
+                    break;
+                case 'ArrowUp':
+                case ' ':
+                    shootBullet();
+                    e.preventDefault(); // Prevent page scrolling
+                    break;
+            }
+        });
+        
+        // Initialize
+        createStars();
+        sentencesEditor.value = sentences.join('\n');
+        totalSentencesEl.textContent = sentences.length;
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93f825e4747217bf',t:'MTc0NzIwMjE0MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
